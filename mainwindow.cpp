@@ -119,13 +119,16 @@ void MainWindow::on_saveButton_clicked()
 
 void MainWindow::on_loadImageButton_clicked()
 {
-    QString fileName = QFileDialog::getOpenFileName(this, tr("Open Image"), "C:\\images\\", tr("Image files (*.png)"));
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Open Image"), "", tr("Image files (*.png)"));
 
-    if(fileName.isEmpty())
-        QCoreApplication::exit();
+    if(fileName.isEmpty()) {
+        qDebug() << "File is empty...";
+        return;
+    }
 
     if(!m_originalImage.load(fileName)) {
         qDebug() << "Failed on loading image. Exiting...";
+        QCoreApplication::exit();
     }
 
     m_rotatedImage = m_originalImage;
@@ -140,9 +143,7 @@ void MainWindow::on_loadImageButton_clicked()
 
 void MainWindow::on_resetButton_clicked()
 {
-    m_rotatedImage = m_originalImage;
-    QPixmap img = QPixmap::fromImage(m_originalImage);
-    ui->label->setPixmap(img);
+
     ui->anglelSlider->setValue(0);
     ui->spinBox->setValue(0);
     m_sobelMinThreshold = 0;
@@ -154,6 +155,9 @@ void MainWindow::on_resetButton_clicked()
     ui->sobelMaxSpinBox->setValue(m_sobelMaxThreshold);
     ui->prewittMinSpinBox->setValue(m_prewittMinThreshold);
     ui->prewittMaxSpinBox->setValue(m_prewittMaxThreshold);
+    m_rotatedImage = m_originalImage;
+    QPixmap img = QPixmap::fromImage(m_originalImage);
+    ui->label->setPixmap(img);
 
     show();
 
