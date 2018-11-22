@@ -133,10 +133,10 @@ QImage Filter::sobelFilter(const QImage &originalImage, int minThreshold, int ma
 
             int pixel = qCeil(qSqrt(pixelX*pixelX + pixelY*pixelY));
 
-            if(pixel > maxThreshold)
+            if(pixel > 255)
                 pixel = 0;
 
-            if(pixel < minThreshold)
+            if(pixel < minThreshold || pixel > maxThreshold)
                 pixel = 0;
 
             filteredImage.setPixel(x,y, qRgb(pixel, pixel, pixel));
@@ -211,10 +211,10 @@ QImage Filter::prewittFilter(const QImage &originalImage, int minThreshold, int 
 
             int pixel = qCeil(qSqrt(pixelX*pixelX + pixelY*pixelY));
 
-            if(pixel > maxThreshold)
+            if(pixel > 255)
                 pixel = 0;
 
-            if(pixel < minThreshold)
+            if(pixel < minThreshold || pixel > maxThreshold)
                 pixel = 0;
 
             filteredImage.setPixel(x,y, qRgb(pixel, pixel, pixel));
