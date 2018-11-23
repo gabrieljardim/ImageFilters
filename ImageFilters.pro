@@ -25,10 +25,12 @@ CONFIG += c++11
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
+    fastfouriertransform.cpp \
     filter.cpp
 
 HEADERS += \
         mainwindow.h \
+    fastfouriertransform.h \
     filter.h
 
 FORMS += \
