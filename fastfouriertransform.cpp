@@ -1,5 +1,6 @@
 #include "fastfouriertransform.h"
 #include <cmath>
+#include <cstdlib>
 
 /*
  * This Source file is an C++ adaptation of Paul Bourke FFT and FFT2D algorithm

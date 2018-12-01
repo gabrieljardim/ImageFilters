@@ -13,7 +13,7 @@ static Complex** convertQImageToComplex2dArray(const QImage& image)
     int height = image.height();
 
 
-    Complex* complexPtr = new Complex[width*height*sizeof(QRgb)];
+    Complex* complexPtr = new Complex[width*height*sizeof(Complex)];
 
     Complex** rowComplexPtr = new Complex*[height*sizeof(Complex*)];
 
@@ -21,8 +21,12 @@ static Complex** convertQImageToComplex2dArray(const QImage& image)
         rowComplexPtr[i] = &complexPtr[i*width];
 
     for(int i = 0; i < height; ++i)
-        for(int j = 0; j < width; ++j)
-            rowComplexPtr[i][j].real = image.pixel(j ,i);
+        for(int j = 0; j < width; ++j) {
+            int pixel = qGray(image.pixel(j,i));
+            rowComplexPtr[i][j].real = pixel;
+            rowComplexPtr[i][j].imag = 0;
+
+        }
 
     return rowComplexPtr;
 
@@ -33,9 +37,13 @@ static QImage convertComplex2dArrayToQImage(Complex** complex2dArray, int width,
     QImage image(width, height, QImage::Format_Grayscale8);
 
     for(int i = 0; i < height; ++i)
-        for(int j = 0; j < width; ++j)
-            image.setPixel(j, i, static_cast<int>(complex2dArray[i][j].real));
+        for(int j = 0; j < width; ++j) {
+            int real = static_cast<int>(complex2dArray[i][j].real);
 
+            int imag = static_cast<int>(complex2dArray[i][j].imag);
+            image.setPixel(real, imag, qRgb(255, 255, 255));
+
+        }
     return image;
 }
 
@@ -232,12 +240,14 @@ QImage Filter::prewittFilter(const QImage &originalImage, int minThreshold, int 
     int width = scaledImage.width();
     int height = scaledImage.height();
 
-    Complex** complex2dArray = convertQImageToComplex2dArray(originalImage);
+    //return scaledImage;
+
+    Complex** complex2dArray = convertQImageToComplex2dArray(scaledImage);
 
 
     qDebug() << "OUTPUT: " << FFT2D(complex2dArray, width, height, 1);
 
-     qDebug() << "OUTPUT2: " << FFT2D(complex2dArray, width, height, -1);
+    qDebug() << "OUTPUT2: " << FFT2D(complex2dArray, width, height, -1);
 
     QImage transformed = convertComplex2dArrayToQImage(complex2dArray, width, height);
 
