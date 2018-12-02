@@ -18,10 +18,11 @@ MainWindow::MainWindow(QWidget *parent) :
     m_sobelMinThreshold(0),
     m_sobelMaxThreshold(255),
     m_prewittMinThreshold(0),
-    m_prewittMaxThreshold(255)
+    m_prewittMaxThreshold(255),
+    m_fourierOp(NotSelected)
 {
     ui->setupUi(this);
-    this->show();
+    this->showMaximized();
 }
 
 MainWindow::~MainWindow()
@@ -133,7 +134,6 @@ void MainWindow::on_loadImageButton_clicked()
 
     m_rotatedImage = m_originalImage;
     QPixmap img = QPixmap::fromImage(m_originalImage);
-    resize(img.width(), img.height());
     ui->imageWidget->resize(img.width(), img.height());
     ui->label->setGeometry(0,0,img.width(), img.height());
     ui->label->setPixmap(img);
@@ -187,5 +187,56 @@ void MainWindow::on_prewittMaxSpinBox_valueChanged(int arg1)
 {
     m_prewittMaxThreshold = arg1;
     on_prewittButton_clicked();
+
+}
+
+void MainWindow::on_lowPassRadioButton_clicked()
+{
+    m_fourierOp = LowPass;
+}
+
+void MainWindow::on_highPassRadioButton_clicked()
+{
+    m_fourierOp = HighPass;
+}
+
+void MainWindow::on_bandPassRadioButton_clicked()
+{
+    m_fourierOp = BandPass;
+}
+
+void MainWindow::on_horizontalSlider_sliderMoved(int position)
+{
+    switch (m_fourierOp) {
+    case LowPass:
+        ui->label->setPixmap(QPixmap::fromImage(Filter::lowPassFilter(m_rotatedImage, position)));
+        ui->label->show();
+        break;
+    case HighPass:
+        ui->label->setPixmap(QPixmap::fromImage(Filter::highPassFilter(m_rotatedImage, position)));
+        ui->label->show();
+        break;
+    case BandPass:
+        ui->label->setPixmap(QPixmap::fromImage(Filter::bandPassFilter(m_rotatedImage, position, ui->horizontalSlider_2->value())));
+        ui->label->show();
+        break;
+    default:
+        break;
+
+    }
+}
+
+void MainWindow::on_horizontalSlider_2_sliderMoved(int position)
+{
+    switch (m_fourierOp) {
+
+    case BandPass:
+        ui->label->setPixmap(QPixmap::fromImage(Filter::bandPassFilter(m_rotatedImage, ui->horizontalSlider->value(), position)));
+        ui->label->show();
+        break;
+    default:
+        break;
+
+    }
 
 }

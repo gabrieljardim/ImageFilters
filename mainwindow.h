@@ -16,6 +16,13 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
+    enum FourierOp {
+        NotSelected,
+        LowPass,
+        HighPass,
+        BandPass
+    };
+
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     void crazyFilter();
@@ -48,6 +55,16 @@ private slots:
 
     void on_prewittMaxSpinBox_valueChanged(int arg1);
 
+    void on_lowPassRadioButton_clicked();
+
+    void on_highPassRadioButton_clicked();
+
+    void on_bandPassRadioButton_clicked();
+
+    void on_horizontalSlider_sliderMoved(int position);
+
+    void on_horizontalSlider_2_sliderMoved(int position);
+
 private:
     Ui::MainWindow *ui;
     QGraphicsScene* m_scene;
@@ -60,6 +77,7 @@ private:
     int m_sobelMaxThreshold;
     int m_prewittMinThreshold;
     int m_prewittMaxThreshold;
+    FourierOp m_fourierOp;
 };
 
 #endif // MAINWINDOW_H

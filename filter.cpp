@@ -4,9 +4,92 @@
 #include <stdio.h>
 #include "fastfouriertransform.h"
 
+#include <iostream>
 
 
-static Complex** convertQImageToComplex2dArray(const QImage& image)
+static void bandPassFilter(Complex** complex2DArray, int width, int height, double minRadius, double maxRadius)
+{
+    for(int i = 0; i < height; ++i)
+        for(int j = 0; j < width; ++j){
+            //d(u,v) = [(u - M/2)^2 + (v - N/2)^2]^1/2
+            double duv = qSqrt((j - width/2)*(j - width/2) + (i - height/2)*(i - height/2));
+
+            if(duv < minRadius || duv > maxRadius) {
+                complex2DArray[i][j].real = 0.0;
+                complex2DArray[i][j].imag = 0.0;
+            }
+        }
+}
+
+static void lowPassFilter(Complex** complex2DArray, int width, int height, double radius)
+{
+    for(int i = 0; i < height; ++i)
+        for(int j = 0; j < width; ++j){
+            //d(u,v) = [(u - M/2)^2 + (v - N/2)^2]^1/2
+            double duv = qSqrt((j - width/2)*(j - width/2) + (i - height/2)*(i - height/2));
+
+            if(duv >= radius) {
+                complex2DArray[i][j].real = 0.0;
+                complex2DArray[i][j].imag = 0.0;
+            }
+        }
+}
+
+static void highPassFilter(Complex** complex2DArray, int width, int height, double radius)
+{
+    for(int i = 0; i < height; ++i)
+        for(int j = 0; j < width; ++j){
+            //d(u,v) = [(u - M/2)^2 + (v - N/2)^2]^1/2
+            double duv = qSqrt((j - width/2)*(j - width/2) + (i - height/2)*(i - height/2));
+
+            if(duv < radius) {
+                complex2DArray[i][j].real = 0.0;
+                complex2DArray[i][j].imag = 0.0;
+            }
+        }
+
+}
+
+static QImage convertComplex2dArrayToMagnitudeImage(Complex** complex2dArray, int width, int height) {
+
+    double max = 0;
+
+    for(int i = 0; i < height; ++i)
+        for(int j = 0; j < width; ++j) {
+            Complex cNum;
+            cNum.real = complex2dArray[i][j].real;
+            cNum.imag = complex2dArray[i][j].imag;
+
+             double mag = qSqrt(cNum.real * cNum.real + cNum.imag * cNum.imag);
+            if(mag > max)
+                max = mag;
+    }
+
+    double c = 255/(qLn(1 + max));
+    qDebug() << "MAX: " << max;
+    qDebug() << "C: " << c;
+
+    QImage outputImage(width, height, QImage::Format_Grayscale8);
+
+
+    for(int i = 0; i < height; ++i)
+        for(int j = 0; j < width; ++j) {
+
+            double real = complex2dArray[i][j].real;
+            double imag = complex2dArray[i][j].imag;
+            double mag = qSqrt(real * real + imag * imag) * 150;
+
+            double gray = c * qLn(1 + mag);
+
+            int grayPixel = static_cast<int>(gray);
+
+            outputImage.setPixel(j, i, qRgb(grayPixel, grayPixel, grayPixel));
+        }
+
+    return outputImage;
+}
+
+static Complex** convertQImageToCenteredComplex2dArray(const QImage& image)
 {
 
     int width = image.width();
@@ -23,7 +106,7 @@ static Complex** convertQImageToComplex2dArray(const QImage& image)
     for(int i = 0; i < height; ++i)
         for(int j = 0; j < width; ++j) {
             int pixel = qGray(image.pixel(j,i));
-            rowComplexPtr[i][j].real = pixel;
+            rowComplexPtr[i][j].real = pixel * qPow(-1, i+j);
             rowComplexPtr[i][j].imag = 0;
 
         }
@@ -32,18 +115,20 @@ static Complex** convertQImageToComplex2dArray(const QImage& image)
 
 }
 
-static QImage convertComplex2dArrayToQImage(Complex** complex2dArray, int width, int height)
+static QImage convertCenteredComplex2dArrayToQImage(Complex** complex2dArray, int width, int height)
 {
     QImage image(width, height, QImage::Format_Grayscale8);
 
     for(int i = 0; i < height; ++i)
         for(int j = 0; j < width; ++j) {
-            int real = static_cast<int>(complex2dArray[i][j].real);
+            int grayValue = static_cast<int>(complex2dArray[i][j].real* qPow(-1, i+j));
 
-            int imag = static_cast<int>(complex2dArray[i][j].imag);
-            image.setPixel(real, imag, qRgb(255, 255, 255));
+            if(grayValue > 255 || grayValue < 0)
+                grayValue = 0;
 
+            image.setPixel(j, i, qRgb(grayValue, grayValue, grayValue));
         }
+
     return image;
 }
 
@@ -231,70 +316,131 @@ QImage Filter::grayBlurFilter(const QImage &originalImage)
 
 QImage Filter::prewittFilter(const QImage &originalImage, int minThreshold, int maxThreshold)
 {
+    QImage grayImage = originalImage;//.convertToFormat(QImage::Format_Grayscale8);
+    QImage filteredImage(originalImage.width(), originalImage.height(), QImage::Format_Grayscale8);
 
-    (float)minThreshold;
-    (float)maxThreshold;
+    int prewittX[3][3]{{-1,0,1}, {-1,0,1}, {-1,0,1}};
+    int prewittY[3][3] = {{-1,-1,-1}, {0,0,0},{1,1,1}};
 
-    QImage scaledImage = originalImage.scaled(1024,1024);
+    int width = grayImage.width();
+    int height = grayImage.height();
+
+    for(int y = 1; y < height -2; ++y)
+        for(int x = 1; x < width -2; ++x) {
+
+            int xn1yn1 = qGray((grayImage.pixel(x-1,y-1)));
+            int x0yn1 = qGray((grayImage.pixel(x,y-1)));
+            int x1yn1 = qGray((grayImage.pixel(x+1,y-1)));
+            int xn1y0 = qGray((grayImage.pixel(x-1,y)));
+            int x0y0 = qGray((grayImage.pixel(x,y)));
+            int x1y0 = qGray((grayImage.pixel(x+1,y)));
+            int xn1y1 = qGray((grayImage.pixel(x-1,y+1)));
+            int x0y1 = qGray((grayImage.pixel(x,y+1)));
+            int x1y1 = qGray((grayImage.pixel(x+1,y+1)));
+
+
+            int pixelX = (prewittX[0][0] * xn1yn1) + (prewittX[0][1] * x0yn1) + (prewittX[0][2] * x1yn1) +
+                         (prewittX[1][0] * xn1y0)   + (prewittX[1][1] * x0y0)   + (prewittX[1][2] * x1y0) +
+                         (prewittX[2][0] * xn1y1) + (prewittX[2][1] * x0y1) + (prewittX[2][2] * x1y1);
+
+            int pixelY = (prewittY[0][0] * xn1yn1) + (prewittY[0][1] * x0yn1) + (prewittY[0][2] * x1yn1) +
+                         (prewittY[1][0] * xn1y0)   + (prewittY[1][1] * x0y0)   + (prewittY[1][2] * x1y0) +
+                         (prewittY[2][0] * xn1y1) + (prewittY[2][1] * x0y1) + (prewittY[2][2] * x1y1);
+
+            int pixel = qCeil(qSqrt(pixelX*pixelX + pixelY*pixelY));
+
+            if(pixel > 255)
+                pixel = 0;
+
+            if(pixel < minThreshold || pixel > maxThreshold)
+                pixel = 0;
+
+            filteredImage.setPixel(x,y, qRgb(pixel, pixel, pixel));
+        }
+    return filteredImage;
+}
+
+QImage Filter::lowPassFilter(const QImage &originalImage, double radius)
+{
+
+    QImage scaledImage = originalImage.scaled(256,256);
 
     int width = scaledImage.width();
     int height = scaledImage.height();
 
-    //return scaledImage;
 
-    Complex** complex2dArray = convertQImageToComplex2dArray(scaledImage);
+    Complex** complex2dArray = convertQImageToCenteredComplex2dArray(scaledImage);
 
 
-    qDebug() << "OUTPUT: " << FFT2D(complex2dArray, width, height, 1);
+    FFT2D(complex2dArray, width, height, 1);
+    lowPassFilter(complex2dArray, width, height, radius);
+    FFT2D(complex2dArray, width, height, -1);
 
-    qDebug() << "OUTPUT2: " << FFT2D(complex2dArray, width, height, -1);
+    QImage transformed = convertCenteredComplex2dArrayToQImage(complex2dArray, width, height);
 
-    QImage transformed = convertComplex2dArrayToQImage(complex2dArray, width, height);
+    deleteComplex2dArray(complex2dArray);
 
     return transformed;
 
-    //QImage grayImage = originalImage;//.convertToFormat(QImage::Format_Grayscale8);
-    //QImage filteredImage(originalImage.width(), originalImage.height(), QImage::Format_Grayscale8);
-    //
-    //int prewittX[3][3]{{-1,0,1}, {-1,0,1}, {-1,0,1}};
-    //int prewittY[3][3] = {{-1,-1,-1}, {0,0,0},{1,1,1}};
-    //
-    //int width = grayImage.width();
-    //int height = grayImage.height();
-    //
-    //for(int y = 1; y < height -2; ++y)
-    //    for(int x = 1; x < width -2; ++x) {
-    //
-    //        int xn1yn1 = qGray((grayImage.pixel(x-1,y-1)));
-    //        int x0yn1 = qGray((grayImage.pixel(x,y-1)));
-    //        int x1yn1 = qGray((grayImage.pixel(x+1,y-1)));
-    //        int xn1y0 = qGray((grayImage.pixel(x-1,y)));
-    //        int x0y0 = qGray((grayImage.pixel(x,y)));
-    //        int x1y0 = qGray((grayImage.pixel(x+1,y)));
-    //        int xn1y1 = qGray((grayImage.pixel(x-1,y+1)));
-    //        int x0y1 = qGray((grayImage.pixel(x,y+1)));
-    //        int x1y1 = qGray((grayImage.pixel(x+1,y+1)));
-    //
-    //
-    //        int pixelX = (prewittX[0][0] * xn1yn1) + (prewittX[0][1] * x0yn1) + (prewittX[0][2] * x1yn1) +
-    //                     (prewittX[1][0] * xn1y0)   + (prewittX[1][1] * x0y0)   + (prewittX[1][2] * x1y0) +
-    //                     (prewittX[2][0] * xn1y1) + (prewittX[2][1] * x0y1) + (prewittX[2][2] * x1y1);
-    //
-    //        int pixelY = (prewittY[0][0] * xn1yn1) + (prewittY[0][1] * x0yn1) + (prewittY[0][2] * x1yn1) +
-    //                     (prewittY[1][0] * xn1y0)   + (prewittY[1][1] * x0y0)   + (prewittY[1][2] * x1y0) +
-    //                     (prewittY[2][0] * xn1y1) + (prewittY[2][1] * x0y1) + (prewittY[2][2] * x1y1);
-    //
-    //        int pixel = qCeil(qSqrt(pixelX*pixelX + pixelY*pixelY));
-    //
-    //        if(pixel > 255)
-    //            pixel = 0;
-    //
-    //        if(pixel < minThreshold || pixel > maxThreshold)
-    //            pixel = 0;
-    //
-    //        filteredImage.setPixel(x,y, qRgb(pixel, pixel, pixel));
-    //    }
-    //
-    //return filteredImage;
+}
+
+QImage Filter::highPassFilter(const QImage &originalImage, double radius)
+{
+
+    QImage scaledImage = originalImage.scaled(256,256);
+
+    int width = scaledImage.width();
+    int height = scaledImage.height();
+
+    Complex** complex2dArray = convertQImageToCenteredComplex2dArray(scaledImage);
+
+    FFT2D(complex2dArray, width, height, 1);
+    highPassFilter(complex2dArray, width, height, radius);
+    FFT2D(complex2dArray, width, height, -1);
+
+    QImage transformed = convertCenteredComplex2dArrayToQImage(complex2dArray, width, height);
+
+    deleteComplex2dArray(complex2dArray);
+
+    return transformed;
+
+}
+
+QImage Filter::bandPassFilter(const QImage &originalImage, double minRadius, double maxRadius)
+{
+    QImage scaledImage = originalImage.scaled(256,256);
+
+    int width = scaledImage.width();
+    int height = scaledImage.height();
+
+    Complex** complex2dArray = convertQImageToCenteredComplex2dArray(scaledImage);
+
+    FFT2D(complex2dArray, width, height, 1);
+    bandPassFilter(complex2dArray, width, height, minRadius, maxRadius);
+    FFT2D(complex2dArray, width, height, -1);
+
+    QImage transformed = convertCenteredComplex2dArrayToQImage(complex2dArray, width, height);
+
+    deleteComplex2dArray(complex2dArray);
+
+    return transformed;
+
+}
+
+QImage Filter::highPassFilterMagnitude(const QImage &originalImage, double radius)
+{
+    QImage scaledImage = originalImage.scaled(256,256);
+    int width = scaledImage.width();
+    int height = scaledImage.height();
+    Complex** complex2dArray = convertQImageToCenteredComplex2dArray(scaledImage);
+
+    FFT2D(complex2dArray, width, height, 1);
+    highPassFilter(complex2dArray, width, height, radius);
+
+    QImage transformed = convertComplex2dArrayToMagnitudeImage(complex2dArray, width, height);
+
+    deleteComplex2dArray(complex2dArray);
+
+    return transformed;
 
 }
