@@ -6,6 +6,11 @@
 
 #include <iostream>
 
+enum FourierType {
+    LOW_PASS,
+    HIGH_PASS,
+    BAND_PASS
+};
 
 static void bandPassFilter(Complex** complex2DArray, int width, int height, double minRadius, double maxRadius)
 {
@@ -123,8 +128,11 @@ static QImage convertCenteredComplex2dArrayToQImage(Complex** complex2dArray, in
         for(int j = 0; j < width; ++j) {
             int grayValue = static_cast<int>(complex2dArray[i][j].real* qPow(-1, i+j));
 
-            if(grayValue > 255 || grayValue < 0)
+            if(grayValue < 0)
                 grayValue = 0;
+
+            if(grayValue > 255)
+                grayValue = 255;
 
             image.setPixel(j, i, qRgb(grayValue, grayValue, grayValue));
         }
@@ -139,6 +147,47 @@ static void deleteComplex2dArray(Complex** complex2dArray)
 
 }
 
+static QImage fourierPassFilter(const QImage &originalImage, double radius1, double radius2, FourierType filterType)
+{
+    int originalWidth = originalImage.width();
+    int originalHeight = originalImage.height();
+    int maxDim = qMax(originalWidth, originalHeight);
+    int nextPowerOfTwo = static_cast<int>(qNextPowerOfTwo(static_cast<quint32>(maxDim-1))); //maxDim -1  is a fast workaround to handle cases where maxDim is already a power of two
+
+    QImage scaledImage = originalImage.scaled(nextPowerOfTwo, nextPowerOfTwo);
+    int width = scaledImage.width();
+    int height = scaledImage.height();
+
+    Complex** complex2dArray = convertQImageToCenteredComplex2dArray(scaledImage);
+
+    FFT2D(complex2dArray, width, height, 1);
+
+    //transform de radius percentage relative to the image where max radius equal to the square diagonal l/2 * 2^(1/2)
+    //Given that the filter is not linea qPow is used to improve the feeling of horizontal bar movement as deltaY has a small variation between 0..1
+    radius1 = qPow(radius1/100.0, 3) * (nextPowerOfTwo/2) * qSqrt(2.0);
+    radius2 = qPow(radius2/100.0, 3) * (nextPowerOfTwo/2) * qSqrt(2.0);
+
+
+    switch(filterType)
+    {
+    case LOW_PASS:
+        lowPassFilter(complex2dArray, width, height, radius1);
+        break;
+    case HIGH_PASS:
+        highPassFilter(complex2dArray, width, height, radius1);
+        break;
+    case BAND_PASS:
+        bandPassFilter(complex2dArray, width, height, radius1, radius2);
+        break;
+    }
+    FFT2D(complex2dArray, width, height, -1);
+
+    QImage transformed = convertCenteredComplex2dArrayToQImage(complex2dArray, width, height).scaled(originalWidth, originalHeight);
+    deleteComplex2dArray(complex2dArray);
+
+    return transformed;
+
+}
 
 QImage Filter::crazyFilter(int filterParam, const QImage &originalImage)
 {
@@ -362,69 +411,17 @@ QImage Filter::prewittFilter(const QImage &originalImage, int minThreshold, int 
 
 QImage Filter::lowPassFilter(const QImage &originalImage, double radius)
 {
-
-    QImage scaledImage = originalImage.scaled(256,256);
-
-    int width = scaledImage.width();
-    int height = scaledImage.height();
-
-
-    Complex** complex2dArray = convertQImageToCenteredComplex2dArray(scaledImage);
-
-
-    FFT2D(complex2dArray, width, height, 1);
-    lowPassFilter(complex2dArray, width, height, radius);
-    FFT2D(complex2dArray, width, height, -1);
-
-    QImage transformed = convertCenteredComplex2dArrayToQImage(complex2dArray, width, height);
-
-    deleteComplex2dArray(complex2dArray);
-
-    return transformed;
-
+   return fourierPassFilter(originalImage, radius, 0, LOW_PASS);
 }
 
 QImage Filter::highPassFilter(const QImage &originalImage, double radius)
 {
-
-    QImage scaledImage = originalImage.scaled(256,256);
-
-    int width = scaledImage.width();
-    int height = scaledImage.height();
-
-    Complex** complex2dArray = convertQImageToCenteredComplex2dArray(scaledImage);
-
-    FFT2D(complex2dArray, width, height, 1);
-    highPassFilter(complex2dArray, width, height, radius);
-    FFT2D(complex2dArray, width, height, -1);
-
-    QImage transformed = convertCenteredComplex2dArrayToQImage(complex2dArray, width, height);
-
-    deleteComplex2dArray(complex2dArray);
-
-    return transformed;
-
+    return fourierPassFilter(originalImage, radius, 0, HIGH_PASS);
 }
 
 QImage Filter::bandPassFilter(const QImage &originalImage, double minRadius, double maxRadius)
 {
-    QImage scaledImage = originalImage.scaled(256,256);
-
-    int width = scaledImage.width();
-    int height = scaledImage.height();
-
-    Complex** complex2dArray = convertQImageToCenteredComplex2dArray(scaledImage);
-
-    FFT2D(complex2dArray, width, height, 1);
-    bandPassFilter(complex2dArray, width, height, minRadius, maxRadius);
-    FFT2D(complex2dArray, width, height, -1);
-
-    QImage transformed = convertCenteredComplex2dArrayToQImage(complex2dArray, width, height);
-
-    deleteComplex2dArray(complex2dArray);
-
-    return transformed;
-
+    return fourierPassFilter(originalImage, minRadius, maxRadius, BAND_PASS);
 }
 
 QImage Filter::highPassFilterMagnitude(const QImage &originalImage, double radius)

@@ -61,9 +61,9 @@ private slots:
 
     void on_bandPassRadioButton_clicked();
 
-    void on_horizontalSlider_sliderMoved(int position);
+    void on_horizontalSlider_sliderReleased();
 
-    void on_horizontalSlider_2_sliderMoved(int position);
+    void on_horizontalSlider_2_sliderReleased();
 
 private:
     Ui::MainWindow *ui;

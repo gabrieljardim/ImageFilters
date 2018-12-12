@@ -205,8 +205,10 @@ void MainWindow::on_bandPassRadioButton_clicked()
     m_fourierOp = BandPass;
 }
 
-void MainWindow::on_horizontalSlider_sliderMoved(int position)
+void MainWindow::on_horizontalSlider_sliderReleased()
 {
+    int position = ui->horizontalSlider->value();
+
     switch (m_fourierOp) {
     case LowPass:
         ui->label->setPixmap(QPixmap::fromImage(Filter::lowPassFilter(m_rotatedImage, position)));
@@ -226,17 +228,17 @@ void MainWindow::on_horizontalSlider_sliderMoved(int position)
     }
 }
 
-void MainWindow::on_horizontalSlider_2_sliderMoved(int position)
+void MainWindow::on_horizontalSlider_2_sliderReleased()
 {
-    switch (m_fourierOp) {
+    int position = ui->horizontalSlider_2->value();
 
+    switch (m_fourierOp) {
     case BandPass:
         ui->label->setPixmap(QPixmap::fromImage(Filter::bandPassFilter(m_rotatedImage, ui->horizontalSlider->value(), position)));
         ui->label->show();
         break;
     default:
         break;
-
     }
 
 }
