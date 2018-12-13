@@ -5,7 +5,6 @@
 
 namespace Filter
 {
-
 QImage crazyFilter(int filterParam, const QImage& originalImage);
 QImage sobelFilter(const QImage& originalImage, int minThreshold, int maxThreshold);
 QImage prewittFilter(const QImage& originalImage, int minThreshold, int maxThreshold);
@@ -15,9 +14,7 @@ QImage lowPassFilter(const QImage& originalImage, double radius);
 QImage highPassFilter(const QImage& originalImage, double radius);
 QImage bandPassFilter(const QImage& originalImage, double minRadius, double maxRadius);
 QImage highPassFilterMagnitude(const QImage& originalImage, double radius);
-
 QRgb bilinearInterpolation(double x, double y, const QImage& originalImage);
-
 };
 
 #endif // FILTER_H

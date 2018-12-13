@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include "fastfouriertransform.h"
 
-#include <iostream>
-
 enum FourierType {
     LOW_PASS,
     HIGH_PASS,
@@ -439,5 +437,4 @@ QImage Filter::highPassFilterMagnitude(const QImage &originalImage, double radiu
     deleteComplex2dArray(complex2dArray);
 
     return transformed;
-
 }

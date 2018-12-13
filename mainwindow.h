@@ -3,7 +3,6 @@
 
 #include <QMainWindow>
 #include <QImage>
-
 class QGraphicsScene;
 class QGraphicsView;
 class QGraphicsPixmapItem;
@@ -65,19 +64,24 @@ private slots:
 
     void on_horizontalSlider_2_sliderReleased();
 
+    void on_bandPassRadioButton_toggled(bool checked);
+
+    void on_applyButton_clicked();
+
 private:
     Ui::MainWindow *ui;
     QGraphicsScene* m_scene;
     QGraphicsView* m_view;
     QGraphicsPixmapItem* m_item;
     QImage m_originalImage;
-    QImage m_rotatedImage;
+    QImage m_modifiedImage;
     bool m_useBilinearInterpolation;
     int m_sobelMinThreshold;
     int m_sobelMaxThreshold;
     int m_prewittMinThreshold;
     int m_prewittMaxThreshold;
     FourierOp m_fourierOp;
+
 };
 
 #endif // MAINWINDOW_H
